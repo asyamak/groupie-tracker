@@ -1,81 +1,81 @@
 package handlers
 
 import (
-	"encoding/json"
-	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
 
-	"groupie-tracker/internal/logic"
-	"groupie-tracker/models"
+	"groupie/internal/logic"
 )
 
-type Error struct {
-	Status  int
-	Message string
-}
-type Artists struct {
-	Artistss   []models.ArtistResult
-	Relationss []models.Relations
-}
-
-type Index struct {
-	ID             int                 `json:"id"`
-	DatesLocations map[string][]string `json:"datesLocations"`
-}
-
-type Handler struct {
-	count int
-}
-
-func NewHandler() *Handler {
-	return &Handler{
-		count: 0,
-	}
-}
-
-// GETHandler func receives only GET request and displays main page.
-func (h *Handler) GETHandler(w http.ResponseWriter, r *http.Request) {
-	status := checkMethodAndPath(r, "/", http.MethodGet)
+// Home function is a main page of the site, which displays list of artist
+// their picture and link for more information.
+func Home(w http.ResponseWriter, r *http.Request) {
+	status := CheckMethod(r, "/", http.MethodGet)
 	if status != 200 {
-		w.WriteHeader(status)
-		// erroHandler(w, http.StatusBadRequest int){
-		// 	Status = statusbadrequesth
-		// 	message = http.textmessage(staus)
-		// 	t1.execute(w, html, error)
-		// }
-
-		templateExecution(w, "./ui/html/"+fmt.Sprint(status)+".html", status)
+		ErrorHandler(w, status)
 		return
 	}
-	var artists []models.ArtistResult
-	if h.count == 0 {
-		artists = logic.GetArtistss()
-		logic.GetRelations()
-		h.count++
-	} else {
-		artists = logic.Array
-	}
-	data := Artists{
-		Artistss: artists,
-	}
-	templateExecution(w, "./ui/html/home.html", data)
+	entries := logic.GetArtist()
+	Execute(w, "ui/templates/index.html", entries)
 }
 
-// Post handler responces only post request and processes data we receive through FromValue
-// checks if text is correct and do not contain cyrilic alphabet, correct new lines,checks if font name is correct
-// and if file that contains format font haven't been modified through HashSum & ConverFont func.
-func (h *Handler) POSTHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodGet {
-		id_str := strings.TrimPrefix(r.URL.Path, "/artist/")
-		id, err := strconv.Atoi(id_str)
-		if err != nil {
-			return
-		}
-		artist := logic.MapArtists[id]
-		artist.Relation = logic.MapRelations[id]
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(artist)
+// Artist function is responsive for artist's info.
+func Artist(w http.ResponseWriter, r *http.Request) {
+	id := strings.TrimPrefix(r.URL.Path, "/artist/")
+	status := CheckMethod(r, "/artist/"+id, http.MethodGet)
+	if status != 200 {
+		ErrorHandler(w, status)
+		log.Printf("Error %d - User tried to use not allowed method - %s \n", http.StatusMethodNotAllowed, r.Method)
+		return
 	}
+	_, err := strconv.Atoi(id)
+	if err != nil {
+		ErrorHandler(w, http.StatusNotFound)
+		return
+	}
+
+	entries := logic.GetMembers(id)
+	if entries.ID == 0 {
+		ErrorHandler(w, http.StatusNotFound)
+		log.Printf("Error %d - Page (http://localhost:8080%s) not found", http.StatusNotFound, r.URL.Path)
+		return
+	}
+	Execute(w, "ui/templates/artist.html", entries)
 }
+
+// Relation function is responsive for displaying information about location and date artist had.
+func Relation(w http.ResponseWriter, r *http.Request) {
+	id := strings.TrimPrefix(r.URL.Path, "/relations/")
+	status := CheckMethod(r, "/relations/"+id, http.MethodGet)
+	if status != 200 {
+		ErrorHandler(w, status)
+		log.Printf("Error %d - User tried to use not allowed method - %s \n", http.StatusMethodNotAllowed, r.Method)
+		return
+	}
+	_, err := strconv.Atoi(id)
+	if err != nil {
+		ErrorHandler(w, http.StatusNotFound)
+		log.Printf("Error %d - User tried to use not allowed method - %s \n", http.StatusNotFound, r.Method)
+		return
+	}
+	entries := logic.Relation(id)
+	if entries.ID == 0 {
+		ErrorHandler(w, http.StatusBadRequest)
+		log.Printf("Error %d - Page (http://localhost:8080%s) not found", http.StatusNotFound, r.URL.Path)
+		return
+	}
+	Execute(w, "ui/templates/concert.html", entries)
+}
+
+// func SearchBar(w http.ResponseWriter, r *http.Request) {
+// 	status := CheckMethod(r, "/", http.MethodGet)
+// 	if status != 200 {
+// 		ErrorHandler(w, status)
+// 		return
+// 	}
+// 	// search := r.FormValue("send")
+// 	entries := logic.SearchBar(search)
+// 	Execute(w, "ui/templates/index.html", entries)
+// }

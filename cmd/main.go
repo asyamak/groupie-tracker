@@ -3,23 +3,12 @@ package main
 import (
 	"log"
 
-	server "groupie-tracker/internal/app"
+	"groupie/cmd/web"
 )
 
-// type Client struct {
-// 	Cl *http.Client
-// }
-
-// func getClient() *Client {
-// 	return &Client{
-// 		cl & http.Client,
-// 	}
-// }
-
 func main() {
-	// client := &Cl.Client{Timeout: 10 * time.Second}
-	if err := server.App(); err != nil {
-		log.Println(err.Error())
-		return
+	app := web.NewApp()
+	if err := app.Run(); err != nil {
+		log.Fatalf("Server run error: %v\n", err)
 	}
 }
